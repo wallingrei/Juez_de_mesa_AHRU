@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+
+    <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  SEGURIDAD #1: Content Security Policy (CSP)                 ║
+    ║  Instruye al navegador a bloquear cualquier recurso o script ║
+    ║  que no venga de las fuentes autorizadas aquí abajo.         ║
+    ║  Esto impide que código malicioso inyectado pueda ejecutarse ║
+    ║  o comunicarse al exterior, incluso si lograra entrar.       ║
+    ╚══════════════════════════════════════════════════════════════╝
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="
+            default-src 'none';
+            script-src  'unsafe-inline' https://cdn.tailwindcss.com;
+            style-src   'unsafe-inline';
+            font-src    'none';
+            img-src     'none';
+            connect-src 'none';
+            frame-src   'none';
+            object-src  'none';
+            base-uri    'self';
+            form-action 'none';
+          ">
+
+    <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  SEGURIDAD #2: Cabeceras de seguridad adicionales via meta   ║
+    ║  X-Content-Type-Options: impide que el navegador "adivine"   ║
+    ║  el tipo de archivo, forzando el tipo declarado.             ║
+    ╚══════════════════════════════════════════════════════════════╝
+    -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mesa de Control - Hockey sobre Césped</title>
+
+    <!--
+    NOTA DE SEGURIDAD sobre Tailwind CDN:
+    Este script es dinámico y no admite un hash SRI fijo.
+    Para producción formal, compilar Tailwind localmente (npm/CLI)
+    y servir el CSS estático. Aquí se mantiene el CDN por practicidad,
+    ya que la app es de uso local/interno.
+    -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @keyframes blink {
+            50% { opacity: 0.4; }
+        }
+        .animate-blink {
+            animation: blink 1s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto space-y-6">
+
+        <!-- ENCABEZADO -->
+        <header class="text-center bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-emerald-400 flex justify-center items-center gap-3">
+                🏑 Juez de Mesa de Hockey
+            </h1>
+            <p class="text-slate-400 mt-2 text-sm md:text-base">Control de tiempo de juego, goles y hasta 5 penalizaciones en tiempo real.</p>
+        </header>
+
+        <!-- PANEL PRINCIPAL -->
+        <main class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            <!-- CRONÓMETRO -->
+            <section class="md:col-span-1 bg-slate-800 p-6 rounded-2xl border border-slate-700 flex flex-col justify-between shadow-lg">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-300 mb-4 border-b border-slate-700 pb-2 text-center md:text-left">Tiempo de Juego</h2>
+                    <div id="main-display" class="text-5xl md:text-6xl font-mono font-bold text-center my-6 text-white tracking-wider"
+                         aria-live="polite" aria-label="Cronómetro de partido">
+                        00:00
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <button id="btn-start" onclick="startMatch()"
+                            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md">
+                        ▶ Iniciar Partido
+                    </button>
+                    <button id="btn-pause" onclick="pauseMatch()"
+                            class="w-full bg-amber-600 hover:bg-amber-500 text-slate-900 font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md hidden">
+                        ⏸ Pausar Partido
+                    </button>
+                    <button onclick="resetMatch()"
+                            class="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold py-2 px-4 rounded-xl transition duration-200 text-sm">
+                        🔄 Reiniciar Partido
+                    </button>
+                </div>
+            </section>
+
+            <!-- REGISTRO DE GOLES -->
+            <section class="md:col-span-2 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
+                <h2 class="text-xl font-bold text-slate-300 mb-4 border-b border-slate-700 pb-2">Registrar Gol</h2>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                    <!--
+                    SEGURIDAD #3 en HTML:
+                    - maxlength: evita entradas excesivamente largas que podrían usarse
+                      para saturar la interfaz o intentar inyecciones largas.
+                    - autocomplete="off": evita que el navegador complete con datos
+                      sensibles guardados de otros contextos.
+                    - pattern: restricción adicional en el número de camiseta.
+                    -->
+                    <input type="text"
+                           id="goal-club"
+                           placeholder="Club / Equipo"
+                           maxlength="50"
+                           autocomplete="off"
+                           class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+
+                    <input type="number"
+                           id="goal-player"
+                           placeholder="N° Camiseta"
+                           min="1"
+                           max="500"
+                           autocomplete="off"
+                           class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+
+                    <button onclick="addGoal()"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl transition duration-200">
+                        ⚽ Anotar Gol
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto max-h-40 overflow-y-auto border border-slate-700 rounded-xl">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-900 text-slate-400">
+                                <th class="p-3 font-semibold">Minuto</th>
+                                <th class="p-3 font-semibold">Club / Equipo</th>
+                                <th class="p-3 font-semibold">Camiseta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="goals-log" class="divide-y divide-slate-700 text-slate-300">
+                            <tr class="text-slate-500">
+                                <td colspan="3" class="p-3 text-center italic">Ningún gol anotado aún</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <!-- SECCIÓN DE PENALIZACIONES -->
+        <section class="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                <h2 class="text-xl font-bold text-slate-300">Control de Penalizaciones</h2>
+                <span id="penalty-count"
+                      class="bg-slate-700 text-slate-300 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-600">
+                    0 / 5 Activas
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
+                <input type="text"
+                       id="pen-club"
+                       placeholder="Club de la jugadora"
+                       maxlength="50"
+                       autocomplete="off"
+                       class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+
+                <input type="number"
+                       id="pen-player"
+                       placeholder="N° Camiseta"
+                       min="1"
+                       max="500"
+                       autocomplete="off"
+                       class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500">
+
+                <!--
+                SEGURIDAD #4: El select usa valores numéricos fijos.
+                El JS valida que el valor recibido sea exactamente uno
+                de esos tres números, incluso si alguien manipulara el DOM.
+                -->
+                <select id="pen-card"
+                        class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500">
+                    <option value="2">Tarjeta Verde (2 min)</option>
+                    <option value="5">Tarjeta Amarilla (5 min)</option>
+                    <option value="10">Tarjeta Amarilla (10 min)</option>
+                </select>
+
+                <button onclick="addPenalty()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-xl transition duration-200 text-sm">
+                    ⚠️ Aplicar Sanción
+                </button>
+            </div>
+
+            <!--
+            SEGURIDAD #5: Los botones "Quitar / Limpiar" se manejan via
+            delegación de eventos (ver JS al final), NO con onclick="..."
+            generado dinámicamente en el HTML, lo que elimina el vector
+            de inyección de JS a través de ese atributo.
+            -->
+            <div id="penalties-container" class="space-y-3">
+                <div class="text-slate-500 text-center italic py-4">
+                    No hay jugadoras sancionadas en este momento
+                </div>
+            </div>
+        </section>
+
+    </div><!-- fin .max-w-4xl -->
+
+    <script>
+    // ================================================================
+    //  ███████╗███████╗ ██████╗ ██╗   ██╗██████╗ ██╗██████╗  █████╗ ██████╗
+    //  ██╔════╝██╔════╝██╔════╝ ██║   ██║██╔══██╗██║██╔══██╗██╔══██╗██╔══██╗
+    //  ███████╗█████╗  ██║      ██║   ██║██████╔╝██║██║  ██║███████║██║  ██║
+    //  ╚════██║██╔══╝  ██║      ██║   ██║██╔══██╗██║██║  ██║██╔══██║██║  ██║
+    //  ███████║███████╗╚██████╗ ╚██████╔╝██║  ██║██║██████╔╝██║  ██║██████╔╝
+    //  ╚══════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝╚═════╝ ╚═╝  ╚═╝╚═════╝
+    // ================================================================
+
+    // ----------------------------------------------------------------
+    // BLOQUE 1 — UTILIDAD DE ESCAPE HTML
+    //
+    // ¿Por qué existe esta función?
+    // Cuando insertamos texto de usuario dentro del HTML de la página
+    // (por ejemplo: el nombre de un club), un atacante podría escribir
+    // algo como:  <script>robarDatos()</script>
+    // Si ese texto se pega tal cual en el DOM con innerHTML, el navegador
+    // lo interpretaría y ejecutaría el script.
+    // Esta función convierte los caracteres peligrosos (&, <, >, ", ')
+    // en sus equivalentes inocuos de HTML, de modo que se MUESTRAN como
+    // texto pero nunca se ejecutan como código.
+    // ----------------------------------------------------------------
+    function escapeHTML(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 2 — CONSTANTES DE VALIDACIÓN
+    //
+    // Centralizamos los límites aceptables en un solo lugar.
+    // Si alguna vez cambia la regla, solo se toca aquí.
+    // ----------------------------------------------------------------
+    const VALIDATION = Object.freeze({
+        CLUB_MAX_LENGTH : 50,
+        PLAYER_MIN      : 1,
+        PLAYER_MAX      : 500,
+        // Lista blanca estricta: SOLO estas duraciones son válidas.
+        // Aunque el valor venga de un <select> controlado, un usuario
+        // avanzado podría manipular el DOM; esta validación lo frena.
+        ALLOWED_DURATIONS: [2, 5, 10],
+        MAX_PENALTIES   : 5,
+    });
+
+    // ----------------------------------------------------------------
+    // BLOQUE 3 — FUNCIONES DE VALIDACIÓN
+    // ----------------------------------------------------------------
+
+    /**
+     * Valida el nombre de un club.
+     * - No vacío
+     * - Máximo 50 caracteres (definido en VALIDATION)
+     */
+    function validateClub(club) {
+        return typeof club === 'string'
+            && club.length > 0
+            && club.length <= VALIDATION.CLUB_MAX_LENGTH;
+    }
+
+    /**
+     * Valida el número de camiseta.
+     * - Debe ser un entero
+     * - Entre 1 y 99
+     */
+    function validatePlayerNumber(raw) {
+        const num = parseInt(raw, 10);
+        return Number.isInteger(num)
+            && num >= VALIDATION.PLAYER_MIN
+            && num <= VALIDATION.PLAYER_MAX;
+    }
+
+    /**
+     * Valida la duración de la tarjeta.
+     * Solo acepta valores exactamente igual a los de la lista blanca.
+     */
+    function validateCardDuration(duration) {
+        return VALIDATION.ALLOWED_DURATIONS.includes(duration);
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 4 — ESTADO DE LA APLICACIÓN
+    // ----------------------------------------------------------------
+    let matchSeconds   = 0;
+    let matchInterval  = null;
+    let isMatchRunning = false;
+    let goals          = [];
+    let penalties      = [];
+
+    // ----------------------------------------------------------------
+    // BLOQUE 5 — AUDIO
+    // ----------------------------------------------------------------
+    function playAlertSound() {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            for (let i = 0; i < 2; i++) {
+                setTimeout(() => {
+                    const oscillator = audioCtx.createOscillator();
+                    const gainNode   = audioCtx.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    oscillator.start();
+                    oscillator.stop(audioCtx.currentTime + 0.3);
+                }, i * 400);
+            }
+        } catch (e) {
+            // Fallo silencioso: el audio es informativo, no crítico.
+            console.warn('[Audio] Web Audio API no disponible:', e.message);
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 6 — CRONÓMETRO
+    // ----------------------------------------------------------------
+    function updateMainDisplay() {
+        const mins = Math.floor(matchSeconds / 60);
+        const secs = matchSeconds % 60;
+        // textContent en lugar de innerText/innerHTML: es más seguro y
+        // eficiente porque nunca parsea el valor como HTML.
+        document.getElementById('main-display').textContent =
+            String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    }
+
+    function startMatch() {
+        if (!isMatchRunning) {
+            isMatchRunning = true;
+            document.getElementById('btn-start').classList.add('hidden');
+            document.getElementById('btn-pause').classList.remove('hidden');
+            matchInterval = setInterval(() => {
+                matchSeconds++;
+                updateMainDisplay();
+                updatePenalties();
+            }, 1000);
+        }
+    }
+
+    function pauseMatch() {
+        isMatchRunning = false;
+        document.getElementById('btn-pause').classList.add('hidden');
+        document.getElementById('btn-start').classList.remove('hidden');
+        clearInterval(matchInterval);
+    }
+
+    function resetMatch() {
+        if (confirm('¿Estás seguro de que deseas reiniciar el partido? Se perderán todos los datos actuales del tablero.')) {
+            pauseMatch();
+            matchSeconds = 0;
+            goals        = [];
+            penalties    = [];
+            updateMainDisplay();
+            renderGoals();
+            renderPenalties();
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 7 — GOLES
+    // ----------------------------------------------------------------
+    function addGoal() {
+        const club   = document.getElementById('goal-club').value.trim();
+        const player = document.getElementById('goal-player').value.trim();
+
+        // Validación estricta antes de aceptar los datos
+        if (!validateClub(club)) {
+            alert('El nombre del club debe tener entre 1 y ' + VALIDATION.CLUB_MAX_LENGTH + ' caracteres.');
+            return;
+        }
+        if (!validatePlayerNumber(player)) {
+            alert('El número de camiseta debe ser un número entero entre '
+                  + VALIDATION.PLAYER_MIN + ' y ' + VALIDATION.PLAYER_MAX + '.');
+            return;
+        }
+
+        const currentMinute = Math.floor(matchSeconds / 60) + 1;
+
+        goals.push({
+            minute : currentMinute + "'",
+            club   : club,
+            // Guardamos el número ya parseado (integer), no el string crudo
+            player : parseInt(player, 10),
+        });
+
+        document.getElementById('goal-club').value   = '';
+        document.getElementById('goal-player').value = '';
+        renderGoals();
+    }
+
+    function renderGoals() {
+        const tbody = document.getElementById('goals-log');
+
+        if (goals.length === 0) {
+            tbody.innerHTML = '<tr class="text-slate-500"><td colspan="3" class="p-3 text-center italic">Ningún gol anotado aún</td></tr>';
+            return;
+        }
+
+        // SEGURIDAD: escapeHTML() en TODOS los campos que vienen del usuario.
+        // Incluso si la validación ya filtró caracteres raros, aplicamos
+        // escape como segunda línea de defensa (principio de defensa en profundidad).
+        tbody.innerHTML = goals.map(g => `
+            <tr class="hover:bg-slate-700/40 transition">
+                <td class="p-3 font-semibold text-emerald-400">${escapeHTML(g.minute)}</td>
+                <td class="p-3 font-medium">${escapeHTML(g.club)}</td>
+                <td class="p-3 text-slate-400">#${escapeHTML(g.player)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 8 — PENALIZACIONES
+    // ----------------------------------------------------------------
+    function addPenalty() {
+        if (penalties.length >= VALIDATION.MAX_PENALTIES) {
+            alert('Límite alcanzado: la mesa de control solo puede gestionar un máximo de '
+                  + VALIDATION.MAX_PENALTIES + ' jugadoras penalizadas simultáneamente.');
+            return;
+        }
+
+        const club        = document.getElementById('pen-club').value.trim();
+        const player      = document.getElementById('pen-player').value.trim();
+        const rawDuration = parseInt(document.getElementById('pen-card').value, 10);
+
+        if (!validateClub(club)) {
+            alert('El nombre del club debe tener entre 1 y ' + VALIDATION.CLUB_MAX_LENGTH + ' caracteres.');
+            return;
+        }
+        if (!validatePlayerNumber(player)) {
+            alert('El número de camiseta debe ser un número entero entre '
+                  + VALIDATION.PLAYER_MIN + ' y ' + VALIDATION.PLAYER_MAX + '.');
+            return;
+        }
+        // Validamos la duración aunque venga de un <select> controlado:
+        // un usuario podría editar el DOM con las herramientas del navegador.
+        if (!validateCardDuration(rawDuration)) {
+            alert('Duración de sanción no válida. Opciones permitidas: '
+                  + VALIDATION.ALLOWED_DURATIONS.join(', ') + ' minutos.');
+            return;
+        }
+
+        penalties.push({
+            id          : Date.now(),   // Numérico; se usa solo internamente
+            club        : club,
+            player      : parseInt(player, 10),
+            duration    : rawDuration,
+            secondsLeft : rawDuration * 60,
+            notified    : false,
+        });
+
+        document.getElementById('pen-club').value   = '';
+        document.getElementById('pen-player').value = '';
+        renderPenalties();
+    }
+
+    function updatePenalties() {
+        let changed = false;
+
+        penalties.forEach(p => {
+            if (p.secondsLeft > 0) {
+                p.secondsLeft--;
+                changed = true;
+
+                if (p.secondsLeft === 0 && !p.notified) {
+                    p.notified = true;
+                    playAlertSound();
+                    // NOTA DE SEGURIDAD: los cuadros de diálogo nativos del navegador
+                    // (alert/confirm) NO interpretan HTML ni ejecutan JS, por lo que
+                    // incluir datos de usuario aquí es seguro. Además, club y player
+                    // ya fueron validados antes de almacenarse.
+                    setTimeout(() => {
+                        alert(
+                            '🚨 TIEMPO CUMPLIDO\n\n'
+                            + 'La jugadora #' + p.player + ' del club "' + p.club + '" '
+                            + 'ha terminado su penalización de ' + p.duration + ' min '
+                            + 'y puede reingresar al campo.'
+                        );
+                    }, 50);
+                }
+            }
+        });
+
+        // BUG CORREGIDO: la condición original era `change || penalties.length >= 0`,
+        // que es SIEMPRE verdadera (ningún array tiene longitud negativa), causando
+        // un re-render innecesario en cada tick aunque no hubiera nada que actualizar.
+        if (changed) {
+            renderPenalties();
+        }
+    }
+
+    function removePenalty(id) {
+        // SEGURIDAD: forzamos conversión a entero y validamos antes de filtrar.
+        // Impide que un valor manipulado (ej: string con código) cause comportamiento inesperado.
+        const numericId = parseInt(id, 10);
+        if (!Number.isInteger(numericId)) {
+            console.warn('[removePenalty] ID inválido recibido:', id);
+            return;
+        }
+        penalties = penalties.filter(p => p.id !== numericId);
+        renderPenalties();
+    }
+
+    function renderPenalties() {
+        // textContent para el badge: valor numérico, sin HTML
+        document.getElementById('penalty-count').textContent =
+            penalties.length + ' / ' + VALIDATION.MAX_PENALTIES + ' Activas';
+
+        const container = document.getElementById('penalties-container');
+
+        if (penalties.length === 0) {
+            container.innerHTML = '<div class="text-slate-500 text-center italic py-4">No hay jugadoras sancionadas en este momento</div>';
+            return;
+        }
+
+        container.innerHTML = penalties.map(p => {
+            const mins     = Math.floor(p.secondsLeft / 60);
+            const secs     = p.secondsLeft % 60;
+            const timerStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+            const isDone   = p.secondsLeft === 0;
+
+            // cardColorName se construye solo con p.duration, que ya fue validado
+            // contra la lista blanca (2, 5 o 10). No viene de input de usuario directo.
+            const cardColorName = p.duration === 2
+                ? "Verde (2')"
+                : "Amarilla (" + p.duration + "')";
+
+            const bgClass       = isDone ? 'bg-rose-950/40 border-rose-500 animate-blink' : 'bg-slate-900 border-slate-700';
+            const textTimeClass = isDone ? 'text-rose-400 font-extrabold' : 'text-amber-400 font-mono';
+            const badgeClass    = p.duration === 2
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                : 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+
+            // SEGURIDAD: escapeHTML() en club y player (datos de usuario).
+            // El id de penalización (Date.now()) es numérico; igualmente se escapa
+            // como medida de defensa en profundidad antes de insertar en data-attribute.
+            // Los botones NO usan onclick="..." inline: la acción se delega al listener
+            // centralizado definido más abajo (ver BLOQUE 9).
+            return `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border ${bgClass} gap-3 transition duration-150">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs px-2.5 py-1 rounded-md font-bold border ${badgeClass}">
+                            ${escapeHTML(cardColorName)}
+                        </span>
+                        <div>
+                            <span class="font-bold text-white text-base">#${escapeHTML(p.player)}</span>
+                            <span class="text-slate-400 text-sm ml-1">(${escapeHTML(p.club)})</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-end gap-6">
+                        <div class="text-right">
+                            ${isDone
+                                ? '<span class="text-rose-400 font-bold text-xs tracking-wider block">¡REINGRESO HABILITADO!</span>'
+                                : '<span class="text-slate-500 text-xs block">Tiempo restante</span>'
+                            }
+                            <span class="text-lg ${textTimeClass}">${isDone ? '00:00' : escapeHTML(timerStr)}</span>
+                        </div>
+                        <button
+                            data-penalty-id="${escapeHTML(p.id)}"
+                            class="js-remove-penalty bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition"
+                            aria-label="Eliminar penalización de #${escapeHTML(p.player)}">
+                            ${isDone ? 'Limpiar' : 'Quitar'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // ----------------------------------------------------------------
+    // BLOQUE 9 — DELEGACIÓN DE EVENTOS (Patrón seguro para botones dinámicos)
+    //
+    // ¿Por qué esto y no onclick="removePenalty(id)" en el HTML?
+    //
+    // La forma original generaba código JavaScript DENTRO del atributo HTML:
+    //   onclick="removePenalty(1748012345)"
+    // Aunque aquí el ID es numérico y relativamente seguro, mezclar
+    // generación de HTML con ejecución de JS es una práctica peligrosa.
+    // En lugar de eso, ponemos un listener UNA sola vez en el contenedor padre.
+    // Cuando alguien hace clic en cualquier botón hijo con clase
+    // "js-remove-penalty", capturamos el ID desde el atributo data-penalty-id,
+    // lo validamos, y recién entonces llamamos a removePenalty().
+    // Esto elimina completamente ese vector de inyección.
+    // ----------------------------------------------------------------
+    document.getElementById('penalties-container').addEventListener('click', function(event) {
+        const btn = event.target.closest('.js-remove-penalty');
+        if (!btn) return;
+
+        const rawId = btn.dataset.penaltyId;
+        const id    = parseInt(rawId, 10);
+
+        if (!Number.isInteger(id)) {
+            console.warn('[EventDelegation] data-penalty-id inválido:', rawId);
+            return;
+        }
+        removePenalty(id);
+    });
+
+    </script>
+</body>
+</html>
